@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>共テ リスニング</title>
+<meta name="theme-color" content="#1f3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="共テ リスニング">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ホーム（選択画面） -->
+<main id="home" class="screen">
+  <header class="home-head">
+    <h1>共通テスト リスニング</h1>
+    <p class="sub">年度と大問を選んで練習</p>
+  </header>
+
+  <section class="card">
+    <div class="card-title"><h2>年度</h2><button class="link" data-all="years">すべて選ぶ</button></div>
+    <div id="yearChips" class="chips"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-title"><h2>大問</h2><button class="link" data-all="sections">すべて選ぶ</button></div>
+    <div id="sectionChips" class="chips"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-title"><h2>再生速度</h2></div>
+    <div id="speedChips" class="chips"></div>
+    <label class="check"><input type="checkbox" id="shuffle"> 出題順をシャッフルする</label>
+  </section>
+
+  <section class="card">
+    <div class="card-title"><h2>素材（問題PDF・音声）</h2></div>
+    <p class="note">問題PDFと音声MP3は、この端末の中にだけ保存されます。最初に1回読み込めば、次からはオフラインでも使えます。</p>
+    <div id="materials"></div>
+    <button id="importBtn" class="btn ghost">ファイルをまとめて読み込む</button>
+    <input id="importInput" type="file" accept=".pdf,.mp3,application/pdf,audio/mpeg" multiple hidden>
+    <input id="singleInput" type="file" hidden>
+    <p id="importMsg" class="note"></p>
+  </section>
+
+  <section class="card" id="historyCard" hidden>
+    <div class="card-title"><h2>これまでの結果</h2><button class="link" id="clearHistory">消す</button></div>
+    <div id="history"></div>
+  </section>
+
+  <div class="start-bar">
+    <div id="selSummary"></div>
+    <button id="startBtn" class="btn primary">開始</button>
+  </div>
+</main>
+
+<!-- 演習画面 -->
+<main id="practice" class="screen" hidden>
+  <header class="p-head">
+    <button id="quitBtn" class="icon-btn" aria-label="やめる">✕</button>
+    <div class="p-title"><span id="pTitle"></span><small id="pProgress"></small></div>
+    <div class="zoom">
+      <button id="zoomOut" class="icon-btn" aria-label="縮小">−</button>
+      <button id="zoomIn" class="icon-btn" aria-label="拡大">＋</button>
+    </div>
+  </header>
+
+  <div id="problem" class="problem"><div id="pages" class="pages"></div></div>
+
+  <div id="divider" class="divider" aria-hidden="true"><span></span></div>
+
+  <div id="bottom" class="bottom">
+    <div class="player">
+      <button id="playBtn" class="play" aria-label="再生">▶</button>
+      <button id="backBtn" class="pl-btn" aria-label="5秒戻る">−5</button>
+      <input id="seek" type="range" min="0" max="1000" value="0" aria-label="再生位置">
+      <button id="fwdBtn" class="pl-btn" aria-label="5秒進む">+5</button>
+      <span id="time" class="time">0:00</span>
+      <button id="speedBtn" class="pl-btn speed">1.0x</button>
+    </div>
+    <div id="speedMenu" class="speed-menu" hidden></div>
+    <div id="answers" class="answers"></div>
+    <div class="actions">
+      <div id="setScore" class="set-score"></div>
+      <button id="gradeBtn" class="btn primary">採点する</button>
+    </div>
+  </div>
+</main>
+
+<!-- 結果画面 -->
+<main id="result" class="screen" hidden>
+  <header class="home-head">
+    <h1>結果</h1>
+    <p class="sub" id="resultTotal"></p>
+  </header>
+  <div id="resultList"></div>
+  <div class="start-bar">
+    <button id="retryWrongBtn" class="btn ghost">間違えた大問をもう一度</button>
+    <button id="homeBtn" class="btn primary">ホームへ</button>
+  </div>
+</main>
+
+<audio id="audio" preload="auto"></audio>
+<script src="data.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "共通テスト リスニング練習",
+  "short_name": "共テ リスニング",
+  "description": "共通テスト英語リスニングを年度・大問ごとに練習するアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1f3a5f",
+  "theme_color": "#1f3a5f",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
