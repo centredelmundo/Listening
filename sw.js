@@ -1,6 +1,6 @@
 // アプリ本体をキャッシュして、オフラインでも開けるようにする。
 // 問題PDFと音声は IndexedDB にあるので、ここでは扱わない。
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'data.js', 'manifest.webmanifest',
   'vendor/pdf.min.mjs', 'vendor/pdf.worker.min.mjs',

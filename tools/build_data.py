@@ -94,7 +94,32 @@ def build(onsets_by_year=None):
                          'qs': qs, 'groups': groups})
         total = sum(q['p'] for s in secs for q in s['qs']) + sum(g['p'] for s in secs for g in s['groups'])
         assert total == 100, (yid, total)
-        out.append({'id': yid, 'label': f'{yid}年 本試', 'sizes': y['sizes'], 'sections': secs})
+        out.append({'id': yid, 'kind': 'kyotsu', 'label': f'{yid}年 本試', 'short': yid,
+                    'sizes': y['sizes'], 'sections': secs})
+    return out
+
+
+def build_center():
+    """センター試験（2006〜2019年）。音声と問題画像は listening.tokyo のURLを参照するだけで、
+    ファイルそのものはこのリポジトリに入れない。配点は全問2点（25問・50点満点）。"""
+    src = json.load(open(os.path.join(os.path.dirname(__file__), 'center.json')))
+    out = []
+    for code in sorted(src, key=lambda c: (-int(c[:4]), c[4] != 'h')):
+        year, kind = code[:4], '本試' if code[4] == 'h' else '追試'
+        secs, n = [], 0
+        for sid in sorted(src[code], key=int):
+            v = src[code][sid]
+            answers = [int(c) for c in v['ans']]
+            choices = 6 if max(answers) > 4 else 4   # 選択肢が6つある問題を含む大問は6つ表示する
+            qs = []
+            for a in answers:
+                n += 1
+                qs.append({'n': n, 'c': choices, 'a': a, 'p': 2})
+            secs.append({'id': sid, 'label': f'第{sid}問', 'audio': v['mp3'], 'images': v['imgs'],
+                         'page': v['page'], 'qs': qs, 'groups': []})
+        assert n == 25, code
+        out.append({'id': code, 'kind': 'center', 'label': f'{year}年 {kind}', 'short': f'{year}{kind[0]}',
+                    'remote': True, 'sections': secs})
     return out
 
 
@@ -103,10 +128,9 @@ if __name__ == '__main__':
     path = os.path.join(os.path.dirname(__file__), 'onsets.json')
     if os.path.exists(path):
         onsets = json.load(open(path))
-    data = build(onsets)
+    data = build(onsets) + build_center()
     dst = os.path.join(os.path.dirname(__file__), '..', 'data.js')
     with open(dst, 'w') as f:
         f.write('// tools/build_data.py が生成したファイル。直接編集しない。\n')
         f.write('window.YEARS = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
-    for y in data:
-        print(y['id'], [s['start'] for s in y['sections']], y['sections'][-1]['end'])
+    print(len(data), 'exams:', ' '.join(y['short'] for y in data))

@@ -4,8 +4,11 @@ import * as pdfjs from './vendor/pdf.min.mjs';
 pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
 
 const YEARS = window.YEARS;
-const SECTION_IDS = ['1A', '1B', '2', '3', '4A', '4B', '5', '6A', '6B'];
-const SECTION_LABEL = { '1A': '第1問A', '1B': '第1問B', '2': '第2問', '3': '第3問', '4A': '第4問A', '4B': '第4問B', '5': '第5問', '6A': '第6問A', '6B': '第6問B' };
+// 試験の種類ごとの大問構成
+const KINDS = {
+  kyotsu: { ids: ['1A', '1B', '2', '3', '4A', '4B', '5', '6A', '6B'], label: (id) => `第${id[0]}問${id.slice(1)}` },
+  center: { ids: ['1', '2', '3', '4'], label: (id) => `第${id}問` },
+};
 const SPEEDS = [0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0];
 const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥'];
 const $ = (id) => document.getElementById(id);
@@ -44,8 +47,9 @@ const fileDel = (key) => idb('readwrite', (s) => s.delete(key));
 
 /* ---------- 状態 ---------- */
 const state = {
+  kind: store.get('kind', 'kyotsu'),
   years: new Set(store.get('years', [])),
-  sections: new Set(store.get('sections', [])),
+  sections: { kyotsu: new Set(store.get('sections', [])), center: new Set(store.get('csections', [])) },
   speed: store.get('speed', 1.0),
   shuffle: store.get('shuffle', false),
   zoom: store.get('zoom', 1),
@@ -58,7 +62,11 @@ const state = {
 };
 
 /* ---------- 素材の読み込み ---------- */
-const hasYear = (y) => state.have.has(`${y.id}.pdf`) && state.have.has(`${y.id}.mp3`);
+// センター試験は元サイトから直接読み込むので、素材の準備は要らない
+const hasYear = (y) => y.remote || (state.have.has(`${y.id}.pdf`) && state.have.has(`${y.id}.mp3`));
+const LOCAL_YEARS = YEARS.filter((y) => !y.remote);
+const kindYears = () => YEARS.filter((y) => y.kind === state.kind);
+const kindSections = () => state.sections[state.kind];
 
 async function refreshHave() {
   try { state.have = new Set(await fileKeys()); } catch { state.have = new Set(); }
@@ -69,7 +77,7 @@ async function pullBundled() {
   if (!navigator.onLine || sessionStorage.getItem('bundledChecked')) return;
   sessionStorage.setItem('bundledChecked', '1');
   let found = false;
-  for (const y of YEARS) {
+  for (const y of LOCAL_YEARS) {
     for (const ext of ['pdf', 'mp3']) {
       const key = `${y.id}.${ext}`;
       if (state.have.has(key)) continue;
@@ -90,10 +98,10 @@ async function pullBundled() {
 function identify(file) {
   const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
   const ext = isPdf ? 'pdf' : 'mp3';
-  const bySize = YEARS.find((y) => y.sizes[ext] === file.size);
+  const bySize = LOCAL_YEARS.find((y) => y.sizes[ext] === file.size);
   if (bySize) return { year: bySize, ext };
   const m = file.name.match(/(?:^|\D)(?:20)?(2[1-9])(?:\D|$)/);
-  const byName = m && YEARS.find((y) => y.id === `20${m[1]}`);
+  const byName = m && LOCAL_YEARS.find((y) => y.id === `20${m[1]}`);
   return { year: byName || null, ext };
 }
 
@@ -123,20 +131,24 @@ function chip(label, on, onClick, extraClass = '') {
 }
 
 function renderHome() {
+  for (const b of $('kindTabs').children) b.className = b.dataset.kind === state.kind ? 'on' : '';
+  $('materialsCard').hidden = state.kind !== 'kyotsu';
+  $('centerNote').hidden = state.kind !== 'center';
   const yc = $('yearChips'); yc.replaceChildren();
-  for (const y of YEARS) {
-    yc.append(chip(y.id, state.years.has(y.id), () => { toggle(state.years, y.id); renderHome(); }, hasYear(y) ? '' : 'off-mat'));
+  for (const y of kindYears()) {
+    yc.append(chip(y.short, state.years.has(y.id), () => { toggle(state.years, y.id); renderHome(); }, hasYear(y) ? '' : 'off-mat'));
   }
   const sc = $('sectionChips'); sc.replaceChildren();
-  for (const id of SECTION_IDS) {
-    sc.append(chip(SECTION_LABEL[id], state.sections.has(id), () => { toggle(state.sections, id); renderHome(); }));
+  const secs = kindSections();
+  for (const id of KINDS[state.kind].ids) {
+    sc.append(chip(KINDS[state.kind].label(id), secs.has(id), () => { toggle(secs, id); renderHome(); }));
   }
   const sp = $('speedChips'); sp.replaceChildren();
   for (const s of SPEEDS) sp.append(chip(`${s}x`, state.speed === s, () => { setSpeed(s); renderHome(); }));
   $('shuffle').checked = state.shuffle;
 
   const mat = $('materials'); mat.replaceChildren();
-  for (const y of YEARS) {
+  for (const y of LOCAL_YEARS) {
     const row = document.createElement('div'); row.className = 'mat-row';
     const name = document.createElement('span'); name.className = 'yr'; name.textContent = y.label;
     row.append(name);
@@ -152,16 +164,18 @@ function renderHome() {
     mat.append(row);
   }
 
-  const ready = YEARS.filter((y) => state.years.has(y.id) && hasYear(y));
-  const missing = YEARS.filter((y) => state.years.has(y.id) && !hasYear(y));
-  const sets = ready.length * state.sections.size;
-  let text = sets ? `${ready.length}年度 × ${state.sections.size}大問 = ${sets}セット` : '年度と大問を選んでください';
+  const ready = kindYears().filter((y) => state.years.has(y.id) && hasYear(y));
+  const missing = kindYears().filter((y) => state.years.has(y.id) && !hasYear(y));
+  const sets = ready.length * secs.size;
+  let text = sets ? `${ready.length}回分 × ${secs.size}大問 = ${sets}セット` : '年度と大問を選んでください';
   if (missing.length) text += `（${missing.map((y) => y.id).join('・')}年は素材が未読み込み）`;
   $('selSummary').textContent = text;
   $('startBtn').disabled = !sets;
 
+  store.set('kind', state.kind);
   store.set('years', [...state.years]);
-  store.set('sections', [...state.sections]);
+  store.set('sections', [...state.sections.kyotsu]);
+  store.set('csections', [...state.sections.center]);
   renderHistory();
 }
 
@@ -217,13 +231,17 @@ function grade(section, answers) {
 const audio = $('audio');
 let audioYear = null, audioUrl = null, seg = { start: 0, end: 0 };
 
-async function loadAudio(year) {
-  if (audioYear === year.id) return;
-  const blob = await fileGet(`${year.id}.mp3`);
-  if (audioUrl) URL.revokeObjectURL(audioUrl);
-  audioUrl = URL.createObjectURL(blob);
-  audio.src = audioUrl;
-  audioYear = year.id;
+async function loadAudio(year, section) {
+  const key = section.audio || year.id;
+  if (audioYear === key) return;
+  if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
+  if (section.audio) {
+    audio.src = section.audio;          // センター試験：大問ごとの音声を元サイトから読み込む
+  } else {
+    audioUrl = URL.createObjectURL(await fileGet(`${year.id}.mp3`));
+    audio.src = audioUrl;
+  }
+  audioYear = key;
   await new Promise((resolve) => {
     if (audio.readyState >= 1) return resolve();
     audio.addEventListener('loadedmetadata', resolve, { once: true });
@@ -253,6 +271,9 @@ let seeking = false;
 audio.addEventListener('timeupdate', () => {
   if (audio.currentTime >= seg.end) { audio.pause(); audio.currentTime = seg.end; }
   updatePlayer();
+});
+audio.addEventListener('durationchange', () => {
+  if (seg.whole && isFinite(audio.duration)) { seg.end = audio.duration; updatePlayer(); }
 });
 audio.addEventListener('play', updatePlayer);
 audio.addEventListener('pause', updatePlayer);
@@ -302,6 +323,15 @@ async function renderPages(section) {
   const box = $('pages');
   const wrap = $('problem');
   const cssWidth = Math.min(wrap.clientWidth - 16, 900) * state.zoom;
+  if (section.images) {
+    box.replaceChildren(...section.images.map((src) => {
+      const img = new Image();
+      img.src = src; img.alt = '問題'; img.style.width = `${cssWidth}px`;
+      img.onerror = () => img.replaceWith(message('問題の画像を読み込めませんでした。ネット接続を確認してください。'));
+      return img;
+    }));
+    return;
+  }
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   const canvases = [];
   for (const n of section.pages) {
@@ -326,7 +356,7 @@ function setZoom(z) {
   state.zoom = Math.min(Math.max(Math.round(z * 100) / 100, 0.6), 3);
   store.set('zoom', state.zoom);
   const cur = current();
-  if (cur && pdfDoc) renderPages(cur.section);
+  if (cur && (pdfDoc || cur.section.images)) renderPages(cur.section);
 }
 $('zoomIn').onclick = () => setZoom(state.zoom * 1.25);
 $('zoomOut').onclick = () => setZoom(state.zoom / 1.25);
@@ -341,9 +371,9 @@ function show(id) {
 
 function buildQueue() {
   const q = [];
-  for (const y of YEARS) {
+  for (const y of kindYears()) {
     if (!state.years.has(y.id) || !hasYear(y)) continue;
-    for (const s of y.sections) if (state.sections.has(s.id)) q.push({ year: y, section: s });
+    for (const s of y.sections) if (kindSections().has(s.id)) q.push({ year: y, section: s });
   }
   if (state.shuffle) for (let i = q.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -366,7 +396,7 @@ async function openSet() {
   state.graded = false;
   audio.pause();
   $('speedMenu').hidden = true;
-  $('pTitle').textContent = `${year.id} ${section.label}`;
+  $('pTitle').textContent = `${year.short} ${section.label}`;
   $('pProgress').textContent = `${state.index + 1}/${state.queue.length}`;
   $('setScore').textContent = '';
   $('gradeBtn').textContent = '採点する';
@@ -374,14 +404,16 @@ async function openSet() {
   $('pages').replaceChildren(message('問題を読み込んでいます…'));
   $('problem').scrollTo(0, 0);
   try {
-    await loadAudio(year);
-    seg = { start: section.start, end: Math.min(section.end, audio.duration || section.end) };
+    await loadAudio(year, section);
+    seg = section.audio
+      ? { start: 0, end: isFinite(audio.duration) ? audio.duration : 3600, whole: true }
+      : { start: section.start, end: Math.min(section.end, audio.duration || section.end) };
     audio.currentTime = seg.start;
     setSpeed(state.speed);
     updatePlayer();
   } catch (e) { console.error(e); }
   try {
-    await loadPdf(year);
+    if (!section.images) await loadPdf(year);
     await renderPages(section);
   } catch (e) {
     console.error(e);
@@ -461,7 +493,7 @@ function finish() {
   for (const r of state.results) {
     const card = document.createElement('div'); card.className = 'res-card';
     const head = document.createElement('div'); head.className = 'res-head';
-    const a = document.createElement('span'); a.textContent = `${r.year.id} ${r.section.label}`;
+    const a = document.createElement('span'); a.textContent = `${r.year.short} ${r.section.label}`;
     const b = document.createElement('span'); b.textContent = `${r.score}/${r.max}`;
     head.append(a, b);
     const qs = document.createElement('div'); qs.className = 'res-q';
@@ -472,14 +504,21 @@ function finish() {
       d.textContent = r.perQ[q.n] ? `問${q.n} ${CIRCLED[q.a - 1]}` : `問${q.n} ${mine ? CIRCLED[mine - 1] : '–'}→${CIRCLED[q.a - 1]}`;
       qs.append(d);
     }
-    card.append(head, qs); list.append(card);
+    card.append(head, qs);
+    if (r.section.page) {
+      const link = document.createElement('a');
+      link.className = 'res-link'; link.href = r.section.page; link.target = '_blank'; link.rel = 'noopener';
+      link.textContent = '台本を元サイトで見る ↗';
+      card.append(link);
+    }
+    list.append(card);
   }
   $('retryWrongBtn').hidden = !state.results.some((r) => r.score < r.max);
 
   if (state.results.length) {
     const hist = store.get('history', []);
     const d = new Date();
-    const years = [...new Set(state.results.map((r) => r.year.id))].join('・');
+    const years = [...new Set(state.results.map((r) => r.year.short))].join('・');
     const secs = [...new Set(state.results.map((r) => r.section.label))];
     hist.unshift({
       date: `${d.getMonth() + 1}/${d.getDate()}`,
@@ -495,15 +534,15 @@ $('retryWrongBtn').onclick = () => startQueue(state.results.filter((r) => r.scor
 $('homeBtn').onclick = () => { show('home'); renderHome(); };
 $('startBtn').onclick = () => startQueue(buildQueue());
 $('clearHistory').onclick = () => { if (confirm('結果の記録を消しますか？')) { store.set('history', []); renderHistory(); } };
+for (const b of $('kindTabs').children) b.onclick = () => { state.kind = b.dataset.kind; renderHome(); };
 $('shuffle').onchange = (e) => { state.shuffle = e.target.checked; store.set('shuffle', state.shuffle); };
 $('importBtn').onclick = () => { $('importInput').value = ''; $('importInput').click(); };
 $('importInput').onchange = (e) => importFiles([...e.target.files]);
 for (const b of document.querySelectorAll('[data-all]')) {
   b.onclick = () => {
-    const [set, all] = b.dataset.all === 'years' ? [state.years, YEARS.map((y) => y.id)] : [state.sections, SECTION_IDS];
+    const [set, all] = b.dataset.all === 'years' ? [state.years, kindYears().map((y) => y.id)] : [kindSections(), KINDS[state.kind].ids];
     const full = all.every((v) => set.has(v));
-    set.clear();
-    if (!full) all.forEach((v) => set.add(v));
+    all.forEach((v) => (full ? set.delete(v) : set.add(v)));
     renderHome();
   };
 }
@@ -529,7 +568,7 @@ for (const b of document.querySelectorAll('[data-all]')) {
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (!$('practice').hidden && pdfDoc && current()) renderPages(current().section); }, 250);
+  resizeTimer = setTimeout(() => { if (!$('practice').hidden && current() && (pdfDoc || current().section.images)) renderPages(current().section); }, 250);
 });
 
 /* ---------- 起動 ---------- */

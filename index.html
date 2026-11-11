@@ -23,6 +23,11 @@
     <p class="sub">年度と大問を選んで練習</p>
   </header>
 
+  <div id="kindTabs" class="tabs">
+    <button data-kind="kyotsu">共通テスト</button>
+    <button data-kind="center">センター試験</button>
+  </div>
+
   <section class="card">
     <div class="card-title"><h2>年度</h2><button class="link" data-all="years">すべて選ぶ</button></div>
     <div id="yearChips" class="chips"></div>
@@ -39,7 +44,12 @@
     <label class="check"><input type="checkbox" id="shuffle"> 出題順をシャッフルする</label>
   </section>
 
-  <section class="card">
+  <section class="card" id="centerNote" hidden>
+    <div class="card-title"><h2>センター試験について</h2></div>
+    <p class="note">2006〜2019年の本試・追試（25問・50点満点）。音声と問題は listening.tokyo から直接読み込むので、ファイルの準備は不要です。使うときはネット接続が必要です。</p>
+  </section>
+
+  <section class="card" id="materialsCard">
     <div class="card-title"><h2>素材（問題PDF・音声）</h2></div>
     <p class="note">問題PDFと音声MP3は、この端末の中にだけ保存されます。最初に1回読み込めば、次からはオフラインでも使えます。</p>
     <div id="materials"></div>
