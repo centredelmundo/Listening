@@ -132,7 +132,8 @@ function chip(label, on, onClick, extraClass = '') {
 
 function renderHome() {
   for (const b of $('kindTabs').children) b.className = b.dataset.kind === state.kind ? 'on' : '';
-  $('materialsCard').hidden = state.kind !== 'kyotsu';
+  // 素材が全年度そろっていれば読み込み欄は出さない（欠けたときだけ予備として出す）
+  $('materialsCard').hidden = state.kind !== 'kyotsu' || LOCAL_YEARS.every(hasYear);
   $('centerNote').hidden = state.kind !== 'center';
   const yc = $('yearChips'); yc.replaceChildren();
   for (const y of kindYears()) {
