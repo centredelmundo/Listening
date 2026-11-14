@@ -358,7 +358,43 @@ function setZoom(z) {
   state.zoom = Math.min(Math.max(Math.round(z * 100) / 100, 0.6), 3);
   store.set('zoom', state.zoom);
   const cur = current();
-  if (cur && (pdfDoc || cur.section.images)) renderPages(cur.section);
+  if (cur && (pdfDoc || cur.section.images)) return renderPages(cur.section);
+}
+
+/* ---------- 2本指でのズーム（ピンチ） ---------- */
+{
+  const wrap = $('problem'), pages = $('pages');
+  let pinch = null;
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  wrap.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 2) return;
+    const r = wrap.getBoundingClientRect();
+    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+    // 指の中心が指している紙面上の位置を覚えておき、拡大後も同じ場所が指の下に来るようにする
+    pinch = { d0: dist(e.touches), mx, my, cx: wrap.scrollLeft + mx, cy: wrap.scrollTop + my, ratio: 1 };
+  }, { passive: true });
+  wrap.addEventListener('touchmove', (e) => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const raw = dist(e.touches) / pinch.d0;
+    pinch.ratio = Math.min(Math.max(raw, 0.6 / state.zoom), 3 / state.zoom);
+    pages.style.transform = `scale(${pinch.ratio})`;
+    wrap.scrollLeft = pinch.cx * pinch.ratio - pinch.mx;
+    wrap.scrollTop = pinch.cy * pinch.ratio - pinch.my;
+  }, { passive: false });
+  const end = async (e) => {
+    if (!pinch || e.touches.length >= 2) return;
+    const p = pinch; pinch = null;
+    const before = state.zoom;
+    if (Math.abs(p.ratio - 1) > 0.02) await setZoom(before * p.ratio);   // 仮の拡大を、くっきりした描画に置き換える
+    const k = state.zoom / before;
+    pages.style.transform = '';
+    wrap.scrollLeft = p.cx * k - p.mx;
+    wrap.scrollTop = p.cy * k - p.my;
+  };
+  wrap.addEventListener('touchend', end);
+  wrap.addEventListener('touchcancel', end);
 }
 $('zoomIn').onclick = () => setZoom(state.zoom * 1.25);
 $('zoomOut').onclick = () => setZoom(state.zoom / 1.25);
@@ -384,7 +420,18 @@ function buildQueue() {
   return q;
 }
 
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  audioYear = null;
+  audio.src = SILENCE;
+  audio.play().then(() => audio.pause()).catch(() => {});
+}
+
 async function startQueue(queue) {
+  unlockAudio();
   state.queue = queue;
   state.index = 0;
   state.results = [];
@@ -413,6 +460,8 @@ async function openSet() {
     audio.currentTime = seg.start;
     setSpeed(state.speed);
     updatePlayer();
+    // 問題を開いたら自動で再生する（ブラウザに止められた場合は再生ボタンで始められる）
+    if (current()?.section === section) audio.play().catch(() => {});
   } catch (e) { console.error(e); }
   try {
     if (!section.images) await loadPdf(year);

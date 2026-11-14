@@ -79,8 +79,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .icon-btn:active{background:rgba(255,255,255,.15)}
 .zoom{display:flex}
 
-.problem{flex:1 1 auto;min-height:80px;overflow:auto;background:#8a93a0;-webkit-overflow-scrolling:touch}
-.pages{display:flex;flex-direction:column;gap:8px;padding:8px;min-width:100%;width:max-content;margin:0 auto}
+.problem{touch-action:pan-x pan-y;flex:1 1 auto;min-height:80px;overflow:auto;background:#8a93a0;-webkit-overflow-scrolling:touch}
+.pages{transform-origin:0 0;display:flex;flex-direction:column;gap:8px;padding:8px;min-width:100%;width:max-content;margin:0 auto}
 .pages canvas,.pages img{display:block;background:var(--paper);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .pages .msg{background:var(--card);color:var(--ink);border-radius:12px;padding:20px;max-width:calc(100vw - 16px);font-size:14px}
 
