@@ -81,20 +81,23 @@
     </div>
   </header>
 
+  <div class="player-wrap">
+  <div class="player">
+    <button id="playBtn" class="play" aria-label="再生">▶</button>
+    <button id="backBtn" class="pl-btn" aria-label="5秒戻る">−5</button>
+    <input id="seek" type="range" min="0" max="1000" value="0" aria-label="再生位置">
+    <button id="fwdBtn" class="pl-btn" aria-label="5秒進む">+5</button>
+    <span id="time" class="time">0:00</span>
+    <button id="speedBtn" class="pl-btn speed">1.0x</button>
+  </div>
+  <div id="speedMenu" class="speed-menu" hidden></div>
+  </div>
+
   <div id="problem" class="problem"><div id="pages" class="pages"></div></div>
 
-  <div id="divider" class="divider" aria-hidden="true"><span></span></div>
+  <div id="divider" class="divider" role="separator" aria-label="解答欄の高さを変える（タップで開閉）"><span></span></div>
 
   <div id="bottom" class="bottom">
-    <div class="player">
-      <button id="playBtn" class="play" aria-label="再生">▶</button>
-      <button id="backBtn" class="pl-btn" aria-label="5秒戻る">−5</button>
-      <input id="seek" type="range" min="0" max="1000" value="0" aria-label="再生位置">
-      <button id="fwdBtn" class="pl-btn" aria-label="5秒進む">+5</button>
-      <span id="time" class="time">0:00</span>
-      <button id="speedBtn" class="pl-btn speed">1.0x</button>
-    </div>
-    <div id="speedMenu" class="speed-menu" hidden></div>
     <div id="answers" class="answers"></div>
     <div class="actions">
       <div id="setScore" class="set-score"></div>

@@ -81,14 +81,15 @@ async function pullBundled() {
     for (const ext of ['pdf', 'mp3']) {
       const key = `${y.id}.${ext}`;
       if (state.have.has(key)) continue;
-      try {
-        const res = await fetch(`materials/${key}`);
-        if (!res.ok) continue;
-        const type = res.headers.get('content-type') || '';
-        if (type.includes('text/html')) continue;
-        await filePut(key, await res.blob());
-        found = true;
-      } catch { /* オフラインなどは無視 */ }
+      for (const name of [key, `${key}.${ext}`]) {
+        try {
+          const res = await fetch(`materials/${name}`);
+          if (!res.ok || (res.headers.get('content-type') || '').includes('text/html')) continue;
+          await filePut(key, await res.blob());
+          found = true;
+          break;
+        } catch { /* オフラインなどは無視 */ }
+      }
     }
   }
   if (found) { await refreshHave(); renderHome(); }
@@ -553,17 +554,29 @@ for (const b of document.querySelectorAll('[data-all]')) {
   const divider = $('divider'), bottom = $('bottom');
   const saved = store.get('bottomH', null);
   if (saved) bottom.style.height = `${saved}px`;
-  let startY = 0, startH = 0;
+  const MIN = 64;                       // たたんだときの高さ（採点ボタンだけ残る）
+  let startY = 0, startH = 0, moved = false;
+  let openH = saved && saved > MIN + 40 ? saved : null;   // 開いているときの高さ
   divider.addEventListener('pointerdown', (e) => {
-    startY = e.clientY; startH = bottom.offsetHeight;
+    startY = e.clientY; startH = bottom.offsetHeight; moved = false;
     divider.setPointerCapture(e.pointerId);
   });
   divider.addEventListener('pointermove', (e) => {
     if (!divider.hasPointerCapture(e.pointerId)) return;
-    const h = Math.min(Math.max(startH + (startY - e.clientY), 150), window.innerHeight * 0.8);
+    if (Math.abs(e.clientY - startY) > 6) moved = true;
+    if (!moved) return;
+    const h = Math.min(Math.max(startH + (startY - e.clientY), MIN), window.innerHeight * 0.8);
     bottom.style.height = `${h}px`;
   });
-  divider.addEventListener('pointerup', () => store.set('bottomH', bottom.offsetHeight));
+  divider.addEventListener('pointerup', () => {
+    if (!moved) {
+      // タップ：たたむ ⇄ 開く
+      const collapsed = bottom.offsetHeight <= MIN + 40;
+      if (!collapsed) openH = bottom.offsetHeight;
+      bottom.style.height = collapsed ? `${openH || Math.round(window.innerHeight * 0.42)}px` : `${MIN}px`;
+    } else if (bottom.offsetHeight > MIN + 40) openH = bottom.offsetHeight;
+    store.set('bottomH', bottom.offsetHeight);
+  });
 }
 
 let resizeTimer;
