@@ -80,6 +80,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .zoom{display:flex}
 
 .problem{touch-action:pan-x pan-y;flex:1 1 auto;min-height:80px;overflow:auto;background:#8a93a0;-webkit-overflow-scrolling:touch}
+.problem.script{overflow:hidden;background:#fff;position:relative}
+.problem.script::before{content:"台本を読み込んでいます…";position:absolute;left:0;right:0;top:40%;text-align:center;color:#637083;font-size:14px}
+#scriptFrame{display:block;position:relative;width:100%;height:100%;border:0;background:transparent}
 .pages{transform-origin:0 0;display:flex;flex-direction:column;gap:8px;padding:8px;min-width:100%;width:max-content;margin:0 auto}
 .pages canvas,.pages img{display:block;background:var(--paper);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .pages .msg{background:var(--card);color:var(--ink);border-radius:12px;padding:20px;max-width:calc(100vw - 16px);font-size:14px}
@@ -122,3 +125,4 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .actions{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line)}
 .set-score{flex:1;font-weight:700;font-size:15px}
 .actions .btn{min-width:130px}
+.actions #scriptBtn{min-width:0;padding:12px 14px}

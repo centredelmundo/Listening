@@ -449,6 +449,8 @@ async function openSet() {
   $('pProgress').textContent = `${state.index + 1}/${state.queue.length}`;
   $('setScore').textContent = '';
   $('gradeBtn').textContent = '採点する';
+  showScript(false);
+  $('scriptBtn').hidden = true;
   renderAnswers();
   $('pages').replaceChildren(message('問題を読み込んでいます…'));
   $('problem').scrollTo(0, 0);
@@ -520,12 +522,27 @@ $('gradeBtn').onclick = async () => {
     state.results.push({ year, section, answers: { ...state.answers }, ...r });
     renderAnswers(r);
     $('setScore').textContent = `${r.score} / ${r.max} 点`;
+    $('scriptBtn').hidden = !section.page;      // 台本ページがある大問だけ、採点後に見られる
     $('gradeBtn').textContent = state.index + 1 < state.queue.length ? '次へ' : '結果を見る';
     return;
   }
   if (state.index + 1 < state.queue.length) { state.index++; await openSet(); }
   else finish();
 };
+
+// 台本：元サイトのページを問題エリアに表示する（文章はアプリには持たない）
+function showScript(on) {
+  const frame = $('scriptFrame');
+  const page = current()?.section.page;
+  on = on && !!page;
+  if (on && frame.dataset.page !== page) { frame.src = page; frame.dataset.page = page; }
+  if (!on && frame.dataset.page) { frame.removeAttribute('src'); delete frame.dataset.page; }
+  frame.hidden = !on;
+  $('pages').hidden = on;
+  $('problem').classList.toggle('script', on);
+  $('scriptBtn').textContent = on ? '問題' : '台本';
+}
+$('scriptBtn').onclick = () => showScript($('scriptFrame').hidden);
 
 $('quitBtn').onclick = () => {
   if (!state.results.length) {

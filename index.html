@@ -93,7 +93,10 @@
   <div id="speedMenu" class="speed-menu" hidden></div>
   </div>
 
-  <div id="problem" class="problem"><div id="pages" class="pages"></div></div>
+  <div id="problem" class="problem">
+    <div id="pages" class="pages"></div>
+    <iframe id="scriptFrame" title="台本" hidden></iframe>
+  </div>
 
   <div id="divider" class="divider" role="separator" aria-label="解答欄の高さを変える（タップで開閉）"><span></span></div>
 
@@ -101,6 +104,7 @@
     <div id="answers" class="answers"></div>
     <div class="actions">
       <div id="setScore" class="set-score"></div>
+      <button id="scriptBtn" class="btn ghost" hidden>台本</button>
       <button id="gradeBtn" class="btn primary">採点する</button>
     </div>
   </div>

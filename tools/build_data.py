@@ -63,6 +63,8 @@ def snap(t, onsets, window=2.5):
 
 def build(onsets_by_year=None):
     out = []
+    # 台本が載っている元サイト（kyotsutest.jp）のページ。2022・2023年のみ存在する
+    script_pages = json.load(open(os.path.join(os.path.dirname(__file__), 'kyotsu_pages.json')))
     for yid, y in YEARS.items():
         new = int(yid) >= 2025
         layout = NEW if new else OLD
@@ -89,9 +91,13 @@ def build(onsets_by_year=None):
                 groups.append({'qs': [18, 19, 20, 21], 'p': 4})
             if sid == '5':
                 groups += [{'qs': [28, 29], 'p': 2}, {'qs': [30, 31], 'p': 2}]
-            secs.append({'id': sid, 'label': LABEL[sid], 'pages': pages[sid],
-                         'start': starts[i], 'end': starts[i + 1] if i < 8 else y['end'],
-                         'qs': qs, 'groups': groups})
+            sec = {'id': sid, 'label': LABEL[sid], 'pages': pages[sid],
+                   'start': starts[i], 'end': starts[i + 1] if i < 8 else y['end'],
+                   'qs': qs, 'groups': groups}
+            page = script_pages.get(yid, {}).get(sid[0])
+            if page:
+                sec['page'] = page
+            secs.append(sec)
         total = sum(q['p'] for s in secs for q in s['qs']) + sum(g['p'] for s in secs for g in s['groups'])
         assert total == 100, (yid, total)
         out.append({'id': yid, 'kind': 'kyotsu', 'label': f'{yid}年 本試', 'short': yid,
