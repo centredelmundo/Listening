@@ -121,8 +121,10 @@ def build_center():
             for a in answers:
                 n += 1
                 qs.append({'n': n, 'c': choices, 'a': a, 'p': 2})
-            secs.append({'id': sid, 'label': f'第{sid}問', 'audio': v['mp3'], 'images': v['imgs'],
-                         'page': v['page'], 'qs': qs, 'groups': []})
+            sec = {'id': sid, 'label': f'第{sid}問', 'audio': v['mp3'], 'images': v['imgs'], 'qs': qs, 'groups': []}
+            if v.get('script_ok', True):      # 元サイトの台本が別の大問のものになっている場合は台本を出さない
+                sec['page'] = v['page']
+            secs.append(sec)
         assert n == 25, code
         out.append({'id': code, 'kind': 'center', 'label': f'{year}年 {kind}', 'short': f'{year}{kind[0]}',
                     'remote': True, 'sections': secs})

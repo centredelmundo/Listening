@@ -116,7 +116,8 @@
 "https://listening.tokyo/wp-content/uploads/2015/12/Page11-2.jpg",
 "https://listening.tokyo/wp-content/uploads/2015/12/Page12-2.jpg"
 ],
-"ans": "123321"
+"ans": "123321",
+"script_ok": false
 }
 },
 "2007t": {
@@ -382,7 +383,7 @@
 },
 "3": {
 "page": "https://kyotsutest.jp/?recipe=2010%e8%bf%bd%e8%a9%a6%e3%80%80%e7%ac%ac%ef%bc%93%e5%95%8f",
-"mp3": "https://listening.tokyo/wp-content/uploads/2015/12/2010t4.mp3",
+"mp3": "https://listening.tokyo/wp-content/uploads/2015/12/2010t3.mp3",
 "imgs": [
 "https://listening.tokyo/wp-content/uploads/2015/12/Page8-21.jpg",
 "https://listening.tokyo/wp-content/uploads/2015/12/Page9-21.jpg"
@@ -686,7 +687,8 @@
 "https://listening.tokyo/wp-content/uploads/2015/12/Page5-18.jpg",
 "https://listening.tokyo/wp-content/uploads/2015/12/Page6-18.jpg"
 ],
-"ans": "424442"
+"ans": "424442",
+"script_ok": false
 },
 "2": {
 "page": "https://kyotsutest.jp/?recipe=2014%e8%bf%bd%e8%a9%a6%e3%80%80%e7%ac%ac%ef%bc%92%e5%95%8f",
@@ -695,7 +697,8 @@
 "https://listening.tokyo/wp-content/uploads/2015/12/Page7-18.jpg",
 "https://listening.tokyo/wp-content/uploads/2015/12/Page8-18.jpg"
 ],
-"ans": "1424334"
+"ans": "1424334",
+"script_ok": false
 },
 "3": {
 "page": "https://kyotsutest.jp/?recipe=2014%e8%bf%bd%e8%a9%a6%e3%80%80%e7%ac%ac%ef%bc%93%e5%95%8f",
@@ -719,7 +722,7 @@
 "2015h": {
 "1": {
 "page": "https://kyotsutest.jp/?recipe=2015%e6%9c%ac%e8%a9%a6%e3%80%80%e7%ac%ac%ef%bc%91%e5%95%8f",
-"mp3": "https://listening.tokyo/wp-content/uploads/2015/12/2014h1.mp3",
+"mp3": "https://listening.tokyo/wp-content/uploads/2015/12/2015h1.mp3",
 "imgs": [
 "https://listening.tokyo/wp-content/uploads/2015/12/Page3-19.jpg",
 "https://listening.tokyo/wp-content/uploads/2015/12/Page4-19.jpg",
@@ -994,7 +997,8 @@
 "https://listening.tokyo/wp-content/uploads/2018/01/0011.jpg",
 "https://listening.tokyo/wp-content/uploads/2018/01/0012.jpg"
 ],
-"ans": "443424"
+"ans": "443424",
+"script_ok": false
 }
 },
 "2018t": {

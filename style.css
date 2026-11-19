@@ -80,9 +80,35 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .zoom{display:flex}
 
 .problem{touch-action:pan-x pan-y;flex:1 1 auto;min-height:80px;overflow:auto;background:#8a93a0;-webkit-overflow-scrolling:touch}
-.problem.script{overflow:hidden;background:#fff;position:relative}
+.problem.script{overflow:hidden;background:#fff;position:relative;display:flex;flex-direction:column}
+.problem.dict-mode{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.script-bar{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card);border-bottom:1px solid var(--line);position:relative;z-index:1}
+.btn.small{min-height:38px;padding:8px 14px;font-size:14px}
+.dict-score{font-size:13px;font-weight:700;color:var(--sub)}
+.dict{flex:1 1 auto;min-height:0;overflow:auto;padding:10px;-webkit-overflow-scrolling:touch}
+.d-qhead{font-size:12px;font-weight:700;color:var(--sub);margin:14px 2px 6px}
+.d-qhead:first-child{margin-top:2px}
+.d-line{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+.d-line.done{border-color:var(--ok)}
+.d-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.d-spk{min-width:28px;height:26px;padding:0 8px;border-radius:13px;background:var(--chip);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.d-no{font-size:12px;color:var(--sub);flex:1}
+.d-play{height:36px;padding:0 14px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+.d-play:disabled{opacity:.35}
+.d-line textarea{width:100%;min-height:62px;resize:vertical;border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+.d-line textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.d-actions{display:flex;gap:8px;margin-top:8px}
+.d-actions button{flex:1;height:40px;border-radius:9px;background:var(--chip);font-weight:700;font-size:14px}
+.d-actions .d-check{background:var(--accent);color:#fff}
+.d-result{margin-top:8px;font-size:16px;line-height:1.7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.d-result .hit{color:var(--ok)}
+.d-result .miss{color:var(--ng);background:var(--ng-bg);border-radius:4px;padding:0 2px;font-weight:700}
+.d-result .shown{color:var(--sub)}
+.d-rate{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-top:2px}
+.d-note{font-size:12px;color:var(--sub);margin:0 2px 10px}
 .problem.script::before{content:"台本を読み込んでいます…";position:absolute;left:0;right:0;top:40%;text-align:center;color:#637083;font-size:14px}
-#scriptFrame{display:block;position:relative;width:100%;height:100%;border:0;background:transparent}
+#scriptFrame{display:block;position:relative;width:100%;flex:1 1 auto;min-height:0;border:0;background:transparent}
 .pages{transform-origin:0 0;display:flex;flex-direction:column;gap:8px;padding:8px;min-width:100%;width:max-content;margin:0 auto}
 .pages canvas,.pages img{display:block;background:var(--paper);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .pages .msg{background:var(--card);color:var(--ink);border-radius:12px;padding:20px;max-width:calc(100vw - 16px);font-size:14px}

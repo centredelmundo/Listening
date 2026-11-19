@@ -270,10 +270,23 @@ function updatePlayer() {
 }
 let seeking = false;
 
+let lineEnd = null;                  // セリフだけを再生しているときの終了位置
 audio.addEventListener('timeupdate', () => {
   if (audio.currentTime >= seg.end) { audio.pause(); audio.currentTime = seg.end; }
   updatePlayer();
 });
+function watchLineEnd() {
+  if (lineEnd == null) return;
+  if (audio.paused) { lineEnd = null; return; }
+  if (audio.currentTime >= lineEnd) { audio.pause(); lineEnd = null; return; }
+  requestAnimationFrame(watchLineEnd);
+}
+function playLine(s, e) {
+  audio.currentTime = Math.max(seg.start, s - 0.15);
+  lineEnd = e + 0.3;
+  audio.playbackRate = state.speed;
+  audio.play().then(() => requestAnimationFrame(watchLineEnd)).catch(() => { lineEnd = null; });
+}
 audio.addEventListener('durationchange', () => {
   if (seg.whole && isFinite(audio.duration)) { seg.end = audio.duration; updatePlayer(); }
 });
@@ -284,6 +297,7 @@ audio.addEventListener('ratechange', () => { if (audio.playbackRate !== state.sp
 function seekTo(t) { audio.currentTime = Math.min(Math.max(t, seg.start), seg.end - 0.05); updatePlayer(); }
 
 $('playBtn').onclick = () => {
+  lineEnd = null;
   if (audio.paused) {
     if (audio.currentTime >= seg.end - 0.1 || audio.currentTime < seg.start) audio.currentTime = seg.start;
     audio.playbackRate = state.speed;
@@ -449,7 +463,8 @@ async function openSet() {
   $('pProgress').textContent = `${state.index + 1}/${state.queue.length}`;
   $('setScore').textContent = '';
   $('gradeBtn').textContent = '採点する';
-  showScript(false);
+  state.dict = { inputs: {}, results: {} };
+  setView('problem');
   $('scriptBtn').hidden = true;
   renderAnswers();
   $('pages').replaceChildren(message('問題を読み込んでいます…'));
@@ -530,19 +545,151 @@ $('gradeBtn').onclick = async () => {
   else finish();
 };
 
-// 台本：元サイトのページを問題エリアに表示する（文章はアプリには持たない）
-function showScript(on) {
+/* ---------- 台本とディクテーション ---------- */
+// 台本：元サイトのページを問題エリアに表示する
+// ディクテーション：セリフ（1人の1回分の発話）ごとに聞き取って入力し、採点する
+let SCRIPTS = null, view = 'problem';
+async function loadScripts() {
+  if (!SCRIPTS) {
+    try { SCRIPTS = await (await fetch('scripts.json')).json(); } catch { SCRIPTS = {}; }
+  }
+  return SCRIPTS;
+}
+const curLines = () => {
+  const c = current();
+  return (c && SCRIPTS?.[`${c.year.id}|${c.section.id}`]) || [];
+};
+
+function setView(mode) {
   const frame = $('scriptFrame');
   const page = current()?.section.page;
-  on = on && !!page;
-  if (on && frame.dataset.page !== page) { frame.src = page; frame.dataset.page = page; }
-  if (!on && frame.dataset.page) { frame.removeAttribute('src'); delete frame.dataset.page; }
-  frame.hidden = !on;
-  $('pages').hidden = on;
-  $('problem').classList.toggle('script', on);
-  $('scriptBtn').textContent = on ? '問題' : '台本';
+  if (mode !== 'problem' && !page) mode = 'problem';
+  view = mode;
+  if (mode === 'script' && frame.dataset.page !== page) { frame.src = page; frame.dataset.page = page; }
+  if (mode === 'problem' && frame.dataset.page) { frame.removeAttribute('src'); delete frame.dataset.page; }
+  frame.hidden = mode !== 'script';
+  $('pages').hidden = mode !== 'problem';
+  $('dict').hidden = mode !== 'dict';
+  $('scriptBar').hidden = mode === 'problem' || !curLines().length;
+  $('problem').classList.toggle('script', mode === 'script');
+  $('problem').classList.toggle('dict-mode', mode === 'dict');
+  $('scriptBtn').textContent = mode === 'problem' ? '台本' : '問題';
+  $('dictBtn').textContent = mode === 'dict' ? '台本を見る' : 'ディクテーション';
+  if (mode === 'dict') renderDict();
+  updateDictScore();
 }
-$('scriptBtn').onclick = () => showScript($('scriptFrame').hidden);
+$('scriptBtn').onclick = async () => {
+  if (view === 'problem') { await loadScripts(); setView('script'); } else setView('problem');
+};
+$('dictBtn').onclick = () => setView(view === 'dict' ? 'script' : 'dict');
+
+// 単語に分ける（大文字小文字・記号の違いは無視し、数字と英単語の数は同じとみなす）
+const NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+  'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const TENS = { thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100 };
+function norm(w) {
+  w = w.toLowerCase().replace(/[’‘`]/g, "'").replace(/[^a-z0-9'%$]/g, '').replace(/^'+|'+$/g, '');
+  const i = NUMS.indexOf(w);
+  if (i >= 0) return String(i);
+  if (w in TENS) return String(TENS[w]);
+  return w;
+}
+const words = (text) => text.replace(/(\d),(\d)/g, '$1$2').split(/[\s\-–—―－/]+/).map(norm).filter(Boolean);
+
+// 正解の各単語が、入力のどこかで（順番どおりに）聞き取れていたかを調べる（最長共通部分列）
+function compare(expected, typed) {
+  const n = expected.length, m = typed.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) {
+    dp[i][j] = expected[i] === typed[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  }
+  const hit = new Array(n).fill(false);
+  for (let i = 0, j = 0; i < n && j < m;) {
+    if (expected[i] === typed[j]) { hit[i] = true; i++; j++; } else if (dp[i + 1][j] >= dp[i][j + 1]) i++; else j++;
+  }
+  return hit;
+}
+
+function gradeLine(idx) {
+  const line = curLines()[idx];
+  const typed = words(state.dict.inputs[idx] || '');
+  // 元の単語ごとに、その中の語がすべて聞き取れていれば正解として色を付ける
+  const orig = line.text.split(/\s+/);
+  const parts = orig.map((w) => words(w));
+  const flat = parts.flat();
+  const hit = compare(flat, typed);
+  let k = 0;
+  const marks = parts.map((p) => { const ok = p.every((_, i) => hit[k + i]); k += p.length; return p.length ? ok : true; });
+  const hits = hit.filter(Boolean).length;
+  state.dict.results[idx] = { orig, marks, hits, total: flat.length };
+}
+
+function renderDict() {
+  const box = $('dict');
+  const lines = curLines();
+  box.replaceChildren();
+  const note = document.createElement('p');
+  note.className = 'd-note';
+  note.textContent = '▶で1セリフずつ再生できます（再生速度は上の設定が使われます）。聞こえた英語を入力して「採点」を押してください。大文字・記号の違いは無視します。';
+  box.append(note);
+  let lastQ = null;
+  lines.forEach((line, idx) => {
+    if (line.q !== lastQ) {
+      const h = document.createElement('div'); h.className = 'd-qhead';
+      h.textContent = `Question No. ${line.q}`;
+      box.append(h); lastQ = line.q;
+    }
+    const card = document.createElement('div'); card.className = 'd-line';
+    const head = document.createElement('div'); head.className = 'd-head';
+    const spk = document.createElement('span'); spk.className = 'd-spk'; spk.textContent = line.spk || '―';
+    const no = document.createElement('span'); no.className = 'd-no'; no.textContent = `${idx + 1} / ${lines.length}`;
+    const play = document.createElement('button'); play.className = 'd-play'; play.textContent = '▶ 再生';
+    if (line.s == null) { play.disabled = true; play.textContent = '再生不可'; }
+    play.onclick = () => playLine(line.s, line.e);
+    head.append(spk, no, play);
+    const ta = document.createElement('textarea');
+    Object.assign(ta, { rows: 2, placeholder: '聞こえた英語を入力', spellcheck: false });
+    ta.setAttribute('autocapitalize', 'off'); ta.setAttribute('autocorrect', 'off'); ta.setAttribute('autocomplete', 'off');
+    ta.value = state.dict.inputs[idx] || '';
+    ta.oninput = () => { state.dict.inputs[idx] = ta.value; };
+    const actions = document.createElement('div'); actions.className = 'd-actions';
+    const check = document.createElement('button'); check.className = 'd-check'; check.textContent = '採点';
+    const showBtn = document.createElement('button'); showBtn.textContent = '答えを見る';
+    const result = document.createElement('div'); result.className = 'd-result';
+    const paint = () => {
+      const r = state.dict.results[idx];
+      result.replaceChildren();
+      card.classList.toggle('done', !!r && r.hits === r.total);
+      if (!r) return;
+      r.orig.forEach((w, i) => {
+        const sp = document.createElement('span');
+        sp.className = r.shown ? 'shown' : r.marks[i] ? 'hit' : 'miss';
+        sp.textContent = w;
+        result.append(sp, ' ');
+      });
+      if (!r.shown) {
+        const rate = document.createElement('span'); rate.className = 'd-rate';
+        rate.textContent = r.hits === r.total ? `完璧！ ${r.total}/${r.total}語` : `${r.hits}/${r.total}語（${Math.round((r.hits / r.total) * 100)}%）　赤：聞き取れなかった語`;
+        result.append(rate);
+      }
+    };
+    check.onclick = () => { gradeLine(idx); paint(); updateDictScore(); };
+    showBtn.onclick = () => {
+      if (!state.dict.results[idx]) state.dict.results[idx] = { orig: line.text.split(/\s+/), shown: true, hits: 0, total: 0 };
+      paint(); updateDictScore();
+    };
+    actions.append(check, showBtn);
+    card.append(head, ta, actions, result);
+    box.append(card);
+    paint();
+  });
+}
+
+function updateDictScore() {
+  const rs = Object.values(state.dict?.results || {}).filter((r) => !r.shown);
+  const hits = rs.reduce((a, r) => a + r.hits, 0), total = rs.reduce((a, r) => a + r.total, 0);
+  $('dictScore').textContent = view === 'dict' && total ? `${rs.length}セリフ採点済み　正答率 ${Math.round((hits / total) * 100)}%` : '';
+}
 
 $('quitBtn').onclick = () => {
   if (!state.results.length) {
